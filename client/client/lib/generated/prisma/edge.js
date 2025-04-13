@@ -353,7 +353,7 @@ const config = {
     "db": {
       "url": {
         "fromEnvVar": "DATABASE_URL",
-        "value": "postgresql://tarifahmed:npg_aSA2Vw1mGsFx@ep-solitary-sound-a5ubxh3b-pooler.us-east-2.aws.neon.tech/surakshaai?sslmode=require"
+        "value": env.DATABASE_URL
       }
     }
   },
