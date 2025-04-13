@@ -1,0 +1,269 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+ 
+}
+// User model (base for both patients and doctors)
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  firstName     String
+  lastName      String
+  phone         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  role          UserRole
+
+  // Relations based on role
+  patient       Patient?
+  doctor        Doctor?
+}
+
+enum UserRole {
+  PATIENT
+  DOCTOR
+  ADMIN
+}
+
+// Patient specific information
+model Patient {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  patientId       String   @unique // Display ID (e.g., P-12345)
+  dateOfBirth     DateTime?
+  address         String?
+  insuranceProvider String?
+  insuranceNumber String?
+  emergencyContact String?
+  emergencyPhone  String?
+  notes           String?
+  
+  // Relations
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appointments    Appointment[]
+  prescriptions   Prescription[]
+  labTests        LabTest[]
+  healthMetrics   HealthMetric[]
+  chatSessions    ChatSession[]
+}
+
+// Doctor specific information
+model Doctor {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  doctorId        String   @unique // Display ID (e.g., DOC-7890)
+  specialization  String
+  qualifications  String?
+  hospital        String?
+  clinic          String?
+  about           String?
+  consultationFee Decimal? @db.Decimal(10, 2)
+  yearsExperience Int?
+  verified        Boolean  @default(false)
+  rating          Float?   @default(0)
+  reviewCount     Int      @default(0)
+  calendarId      String?  // For integration with Cal.com
+  
+  // Relations
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appointments    Appointment[]
+  prescriptions   Prescription[]
+  labOrders       LabTest[]
+  availability    Availability[]
+  reviews         Review[]
+}
+
+// Doctor availability
+model Availability {
+  id        String   @id @default(cuid())
+  doctorId  String
+  dayOfWeek Int      // 0-6 for Sunday-Saturday
+  startTime String   // Format: "HH:MM"
+  endTime   String   // Format: "HH:MM"
+  available Boolean  @default(true)
+  
+  // Relation
+  doctor    Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@unique([doctorId, dayOfWeek, startTime])
+}
+
+// Appointment model
+model Appointment {
+  id          String    @id @default(cuid())
+  patientId   String
+  doctorId    String
+  date        DateTime
+  startTime   String    // Format: "HH:MM"
+  endTime     String    // Format: "HH:MM"
+  status      AppointmentStatus @default(SCHEDULED)
+  type        AppointmentType @default(IN_PERSON)
+  reason      String?
+  notes       String?
+  location    String?
+  duration    Int       // In minutes
+  calendarEventId String? // For Cal.com integration
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  patient     Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor      Doctor    @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CHECKED_IN
+  COMPLETED
+  CANCELED
+  RESCHEDULED
+  WAITING
+}
+
+enum AppointmentType {
+  IN_PERSON
+  TELEMEDICINE
+}
+
+// Prescription model
+model Prescription {
+  id            String    @id @default(cuid())
+  patientId     String
+  doctorId      String
+  medicationName String
+  dosage        String
+  frequency     String
+  duration      String
+  instructions  String?
+  refills       Int       @default(0)
+  refillsRemaining Int    @default(0)
+  pharmacy      String?
+  status        PrescriptionStatus @default(ACTIVE)
+  prescribedOn  DateTime  @default(now())
+  expiresOn     DateTime?
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  patient       Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor        Doctor    @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+}
+
+enum PrescriptionStatus {
+  ACTIVE
+  EXPIRED
+  COMPLETED
+  CANCELED
+}
+
+// Lab Test model
+model LabTest {
+  id          String    @id @default(cuid())
+  patientId   String
+  orderedById String    // Doctor ID who ordered the test
+  testName    String
+  testCode    String?
+  status      LabTestStatus @default(SCHEDULED)
+  scheduledDate DateTime?
+  completedDate DateTime?
+  results     String?
+  notes       String?
+  priority    TestPriority @default(NORMAL)
+  fasting     Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  patient     Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  orderedBy   Doctor    @relation(fields: [orderedById], references: [id])
+}
+
+enum LabTestStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELED
+  IN_PROGRESS
+}
+
+enum TestPriority {
+  NORMAL
+  URGENT
+  STAT
+}
+
+// Health Metrics for patients
+model HealthMetric {
+  id          String    @id @default(cuid())
+  patientId   String
+  type        MetricType
+  value       String
+  unit        String
+  recordedAt  DateTime  @default(now())
+  notes       String?
+  
+  // Relation
+  patient     Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+enum MetricType {
+  BLOOD_PRESSURE
+  HEART_RATE
+  WEIGHT
+  BLOOD_GLUCOSE
+  TEMPERATURE
+  OXYGEN_SATURATION
+  OTHER
+}
+
+// AI Chat Doctor Sessions
+model ChatSession {
+  id          String    @id @default(cuid())
+  patientId   String
+  startedAt   DateTime  @default(now())
+  endedAt     DateTime?
+  topic       String?
+  
+  // Relations
+  patient     Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  messages    ChatMessage[]
+}
+
+model ChatMessage {
+  id            String    @id @default(cuid())
+  sessionId     String
+  content       String    @db.Text
+  sentBy        MessageSender
+  sentAt        DateTime  @default(now())
+  
+  // Relation
+  session       ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+enum MessageSender {
+  PATIENT
+  AI_DOCTOR
+}
+
+// Doctor Reviews
+model Review {
+  id          String    @id @default(cuid())
+  doctorId    String
+  patientName String    // Anonymous or actual name
+  rating      Float     // e.g., 1-5
+  comment     String?
+  createdAt   DateTime  @default(now())
+  
+  // Relation
+  doctor      Doctor    @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+}
