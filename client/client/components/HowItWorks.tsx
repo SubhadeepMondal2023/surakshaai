@@ -60,8 +60,8 @@ const HowItWorks = () => {
       
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            How <span className="gradient-text">MediAssistAI</span> Works
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white ">
+            How <span className="gradient-text">SurakshaAI</span> Works
           </h2>
           <p className="text-gray-400">
             Our end-to-end AI solution transforms patient interaction with seamless integration across multiple touchpoints
@@ -99,7 +99,11 @@ const HowItWorks = () => {
         {/* Workflow diagram */}
         <div className="bg-violet-900/10 border border-violet-800/20 rounded-xl p-4 md:p-8 overflow-hidden">
           <div className="aspect-video relative">
-            
+            <img 
+              src="/blockdg.png" 
+              alt="AI-Powered Virtual Medical Receptionist - System Architecture" 
+              className="w-full h-full object-contain"
+            />
             
             {/* Highlight overlay based on active step */}
             <div className="absolute inset-0 flex">

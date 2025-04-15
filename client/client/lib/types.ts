@@ -157,18 +157,3 @@ export interface Prescription {
   refills: number;
 }
 
-export interface HealthMetric {
-  date: string;
-  bloodPressure: string;
-  heartRate: number;
-  weight: number;
-}
-
-export interface LabTest {
-  id: string;
-  name: string;
-  requestedOn: string;
-  status: 'pending' | 'completed' | 'canceled';
-  results?: string;
-  resultDate?: string;
-}

@@ -1,0 +1,227 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model - base model for both patients and doctors
+model User {
+  id            String      @id @default(cuid())
+  email         String      @unique
+  password      String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  role          UserRole    @default(PATIENT)
+  
+  // Relations
+  patient       Patient?
+  doctor        Doctor?
+}
+
+enum UserRole {
+  PATIENT
+  DOCTOR
+  ADMIN
+}
+
+// Patient model
+model Patient {
+  id              String          @id @default(cuid())
+  userId          String          @unique
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName       String
+  lastName        String
+  dateOfBirth     DateTime
+  gender          Gender?
+  phoneNumber     String?
+  address         String?
+  emergencyContact String?
+  insuranceProvider String?
+  insuranceNumber  String?
+  medicalHistory  Json?
+  
+  // Relations
+  appointments    Appointment[]
+  prescriptions   Prescription[]
+  chatSessions    ChatSession[]
+}
+
+// Doctor model
+model Doctor {
+  id              String          @id @default(cuid())
+  userId          String          @unique
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName       String
+  lastName        String
+  specialization  String
+  licenseNumber   String          @unique
+  yearsExperience Int?
+  biography       String?
+  education       String?
+  availableSlots  AvailableSlot[]
+  rating          Float?          @default(0)
+  reviewCount     Int?            @default(0)
+  
+  // Relations
+  appointments    Appointment[]
+  prescriptions   Prescription[]
+  calendarId      String?         // For Cal.com integration
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+// Doctor's available time slots for appointments
+model AvailableSlot {
+  id          String    @id @default(cuid())
+  doctorId    String
+  doctor      Doctor    @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  startTime   DateTime
+  endTime     DateTime
+  isBooked    Boolean   @default(false)
+  dayOfWeek   Int       // 0-6 (Sunday-Saturday)
+  
+  @@index([doctorId])
+  @@index([dayOfWeek])
+}
+
+// Appointment model
+model Appointment {
+  id              String            @id @default(cuid())
+  patientId       String
+  patient         Patient           @relation(fields: [patientId], references: [id])
+  doctorId        String
+  doctor          Doctor            @relation(fields: [doctorId], references: [id])
+  dateTime        DateTime
+  duration        Int               // Duration in minutes
+  status          AppointmentStatus @default(SCHEDULED)
+  type            AppointmentType   @default(IN_PERSON)
+  reason          String?
+  notes           String?
+  location        String?           // For in-person appointments
+  meetingLink     String?           // For telemedicine appointments
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([dateTime])
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CHECKED_IN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  RESCHEDULED
+  WAITING
+}
+
+enum AppointmentType {
+  IN_PERSON
+  TELEMEDICINE
+}
+
+// Prescription model
+model Prescription {
+  id              String        @id @default(cuid())
+  patientId       String
+  patient         Patient       @relation(fields: [patientId], references: [id])
+  doctorId        String
+  doctor          Doctor        @relation(fields: [doctorId], references: [id])
+  medicationName  String
+  dosage          String
+  frequency       String
+  duration        String
+  instructions    String?
+  refills         Int           @default(0)
+  status          PrescriptionStatus @default(ACTIVE)
+  pharmacy        String?
+  expiryDate      DateTime
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@index([patientId])
+  @@index([doctorId])
+}
+
+enum PrescriptionStatus {
+  ACTIVE
+  COMPLETED
+  EXPIRED
+}
+
+// AI Chat model for patient-AI interactions
+model ChatSession {
+  id              String    @id @default(cuid())
+  patientId       String
+  patient         Patient   @relation(fields: [patientId], references: [id])
+  startedAt       DateTime  @default(now())
+  lastMessageAt   DateTime  @default(now())
+  messages        ChatMessage[]
+  
+  @@index([patientId])
+}
+
+// Individual chat messages
+model ChatMessage {
+  id              String    @id @default(cuid())
+  sessionId       String
+  session         ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  content         String
+  sender          MessageSender
+  timestamp       DateTime  @default(now())
+  
+  @@index([sessionId])
+}
+
+enum MessageSender {
+  PATIENT
+  AI
+}
+
+// Notification model for system notifications
+model Notification {
+  id              String    @id @default(cuid())
+  userId          String
+  title           String
+  message         String
+  type            NotificationType
+  isRead          Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  
+  @@index([userId])
+}
+
+enum NotificationType {
+  APPOINTMENT_REMINDER
+  PRESCRIPTION_REMINDER
+  APPOINTMENT_CONFIRMATION
+  APPOINTMENT_CANCELLATION
+  SYSTEM_ALERT
+}
+
+// For Cal.com integration
+model CalendarIntegration {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  calendarId      String    @unique
+  provider        String    @default("cal.com")
+  accessToken     String?
+  refreshToken    String?
+  expiresAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([userId])
+}
