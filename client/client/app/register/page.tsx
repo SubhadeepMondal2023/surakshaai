@@ -55,10 +55,12 @@ export default function Register() {
         ...(role === 'PATIENT' ? { dateOfBirth } : {}),
         ...(role === 'DOCTOR' ? { specialization, licenseNumber } : {}),
       };
-
+  
       console.log('Submitting registration data:', userData);
       await register(userData);
-      // Redirect handled in AuthContext after successful registration
+      
+      // Add this redirection logic
+      router.push('/redirect');
     } catch (err: any) {
       console.error('Registration error:', err);
       setError(err.message || 'Registration failed. Please try again.');
