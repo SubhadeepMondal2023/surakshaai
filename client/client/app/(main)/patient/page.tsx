@@ -1,70 +1,78 @@
-// app/(main)/patient/page.tsx
+// client/app/patient/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSession } from '@clerk/nextjs';
+import { useAuth } from '../../context/AuthContext';
 import { useRouter } from 'next/navigation';
+import Navbar from '../../../components/Navbar';
 import UpcomingAppointments from './_components/UpcomingAppointments';
 import RecentPrescriptions from './_components/RecentPrescriptions';
 import QuickActions from './_components/QuickActions';
-import HealthMetricsChart from './_components/HealthMetricsChart';
 
 export default function PatientDashboard() {
-  const { session, isLoaded } = useSession();
+  const { user, loading } = useAuth();
   const router = useRouter();
-  const [patientId, setPatientId] = useState<string | null>(null);
+  const [greeting, setGreeting] = useState('');
 
   useEffect(() => {
-    if (isLoaded) {
-      if (!session) {
-        router.push('/sign-in');
-        return;
-      }
+    const hour = new Date().getHours();
+    if (hour < 12) setGreeting('Good morning');
+    else if (hour < 18) setGreeting('Good afternoon');
+    else setGreeting('Good evening');
+  }, []);
 
-      const id = session.user?.publicMetadata.patientId as string || 'demo-patient-id';
-      setPatientId(id);
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/sign-in');
     }
-  }, [session, isLoaded, router]);
+  }, [user, loading, router]);
 
-  if (!isLoaded) return (
-    <div className="flex items-center justify-center h-screen">
-      <div className="animate-pulse text-purple-400">Loading...</div>
-    </div>
-  );
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Loading...</p>
+      </div>
+    );
+  }
 
-  if (!patientId) return (
-    <div className="flex items-center justify-center h-screen">
-      <div className="animate-pulse text-purple-400">Loading patient data...</div>
-    </div>
-  );
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Redirecting to login...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="ml-0 md:ml-64 p-4 md:p-8 min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
-      {/* Welcome section */}
-      <div className="glass-card mb-8 p-6 rounded-xl">
-        <div className="flex gap-4 items-center">
-          <div className="h-16 w-16 rounded-full bg-gradient-to-br from-purple-600 to-purple-800 flex items-center justify-center text-white font-bold text-xl">
-            {session?.user.firstName?.charAt(0) || ''}
-            {session?.user.lastName?.charAt(0) || ''}
+    <div className="min-h-screen bg-gray-100">
+      <Navbar />
+      <div className="pt-24 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-white rounded-lg shadow p-6 mb-6">
+            <div className="flex gap-4 items-center">
+              <div className="h-16 w-16 rounded-full bg-gradient-to-br from-purple-600 to-purple-800 flex items-center justify-center text-white font-bold text-xl">
+                {user?.profile?.firstName?.charAt(0) || ''}
+                {user?.profile?.lastName?.charAt(0) || ''}
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {greeting}, {user?.profile?.firstName || 'Patient'}!
+                </h1>
+                <p className="text-gray-600">Welcome to your patient dashboard</p>
+              </div>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white">
-              Welcome back, {session?.user.fullName || 'Patient'}
-            </h1>
-            <p className="text-purple-200">Patient ID: {patientId}</p>
+
+          {/* Main dashboard grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="space-y-6">
+              <UpcomingAppointments patientId={user.id} />
+              <QuickActions patientId={user.id} />
+            </div>
+            <div className="space-y-6">
+              <RecentPrescriptions patientId={user.id} />
+            </div>
           </div>
-        </div>
-      </div>
-      
-      {/* Main dashboard grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="space-y-6">
-          <UpcomingAppointments patientId={patientId} />
-          <QuickActions patientId={patientId} />
-        </div>
-        <div className="space-y-6">
-          <RecentPrescriptions patientId={patientId} />
-          <HealthMetricsChart patientId={patientId} />
         </div>
       </div>
     </div>

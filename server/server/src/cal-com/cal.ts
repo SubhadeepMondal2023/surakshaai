@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import * as moment from 'moment';
+import * as moment from 'moment-timezone';
 
 // Environment variable validation
 if (!process.env.CALCOM_API_KEY) {
@@ -49,6 +49,7 @@ const config: Config = {
 
 export async function getAvailability(
   days: number = 5,
+  timezone: string = 'America/New_York',
 ): Promise<
   | { success: boolean; availability: { slots: any[] } }
   | { success: false; error: string }
@@ -85,13 +86,28 @@ export async function getAvailability(
     }
 
     const data = await response.json();
-    console.log('Availability response:', JSON.stringify(data, null, 2));
 
     if (data.status !== 'success' || !data.data?.slots) {
-      throw new Error('Invalid response format');
+      console.error('Invalid availability response format:', data);
+      throw new Error('Invalid response format from availability API');
     }
 
-    const slots = Object.values(data.data.slots).flat();
+    // Process slots and convert times to the requested timezone
+    const slots = Object.values(data.data.slots).flat().map((slot: any) => {
+      try {
+        // Ensure slot has a time property before formatting
+        if (slot && slot.time) {
+          return {
+            ...slot,
+            time: moment(slot.time).tz(timezone).format('YYYY-MM-DDTHH:mm:ss')
+          };
+        }
+        return slot;
+      } catch (error) {
+        console.error('Error formatting slot time:', error);
+        return slot; // Return original slot if formatting fails
+      }
+    });
 
     return {
       success: true,
@@ -101,63 +117,99 @@ export async function getAvailability(
     console.error('Failed to fetch availability:', error);
     return {
       success: false,
-      error: 'Failed to fetch availability',
+      error: error instanceof Error ? error.message : 'Failed to fetch availability',
     };
   }
 }
 
 export async function createBooking(
   bookingData: BookingRequest,
+  retries = 1
 ): Promise<BookingResponse> {
-  try {
-    const eventTypeId = bookingData.eventTypeId || config.eventTypeId;
+  let lastError;
+  
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      // Add a delay between retries
+      if (attempt > 0) {
+        console.log(`Retry attempt ${attempt} for booking creation`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      }
+      
+      const eventTypeId = bookingData.eventTypeId || config.eventTypeId;
+      const { eventTypeId: _, ...requestData } = bookingData;
 
-    const { eventTypeId: _, ...requestData } = bookingData;
+      const requestBody = {
+        ...requestData,
+        eventTypeId,
+      };
 
-    const requestBody = {
-      ...requestData,
-      eventTypeId,
-    };
+      const url = `${BASE_URL}/bookings`;
 
-    const url = `${BASE_URL}/bookings`;
+      console.log('Creating booking:', JSON.stringify(requestBody, null, 2));
 
-    console.log('Creating booking:', JSON.stringify(requestBody, null, 2));
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${config.apiKey}`,
-        'Content-Type': 'application/json',
-        'cal-api-version': '2024-08-13',
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Failed to create booking:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorText,
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${config.apiKey}`,
+          'Content-Type': 'application/json',
+          'cal-api-version': '2024-08-13',
+        },
+        body: JSON.stringify(requestBody),
       });
-      throw new Error(`Failed to create booking: ${response.statusText}`);
+
+      // If request fails, try to parse the error response
+      if (!response.ok) {
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (e) {
+          errorData = { error: { message: await response.text() } };
+        }
+        
+        console.error('Failed to create booking:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorDetails: errorData
+        });
+        
+        // Provide more specific error messages based on response
+        if (errorData?.error?.message?.includes('already has booking')) {
+          throw new Error('This time slot is already booked. Please select another time.');
+        } else if (errorData?.error?.message?.includes('not available')) {
+          throw new Error('The host is not available at this time. Please select another time slot.');
+        } else if (errorData?.error?.message) {
+          throw new Error(`Cal.com error: ${errorData.error.message}`);
+        }
+        
+        throw new Error(`Failed to create booking: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('Booking response:', JSON.stringify(data, null, 2));
+
+      return {
+        status: true,
+        booking: data,
+      };
+    } catch (error) {
+      lastError = error;
+      console.error(`Attempt ${attempt + 1}/${retries + 1} failed:`, error);
+      
+      // If this is a definite availability error, don't retry
+      if (error instanceof Error && 
+          (error.message.includes('already has booking') || 
+           error.message.includes('not available'))) {
+        break;
+      }
     }
-
-    const data = await response.json();
-    console.log('Booking response:', JSON.stringify(data, null, 2));
-
-    return {
-      status: true,
-      booking: data,
-    };
-  } catch (error) {
-    console.error('Failed to create booking:', error);
-    return {
-      status: false,
-      error:
-        error instanceof Error ? error.message : 'Failed to create booking',
-    };
   }
+  
+  // All attempts failed
+  return {
+    status: false,
+    error: lastError instanceof Error ? lastError.message : 'Failed to create booking',
+  };
 }
 
 export async function cancelBookingByUser(
@@ -173,9 +225,9 @@ export async function cancelBookingByUser(
     }
 
     const bookingUid = bookingResponse.booking.data.uid;
-    let url = `https://api.cal.com/v2/bookings/${bookingUid}/cancel`;
+    let url = `${BASE_URL}/bookings/${bookingUid}/cancel`;
 
-    const requestBody: any = {
+    const requestBody = {
       reason: cancellationReason || 'User requested cancellation',
     };
 

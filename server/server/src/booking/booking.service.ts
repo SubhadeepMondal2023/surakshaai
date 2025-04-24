@@ -25,47 +25,6 @@ export class BookingService {
 
   private readonly emailRegex = /^(?!\.)(?!.*\.\.)[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
   
-
-  /**Common Invalid Patterns Blocked
-
-user@.com (leading dot in domain)
-
-user..name@domain.com (consecutive dots)
-
-user@domain..com (consecutive dots in domain)
-
-user@-domain.com (leading hyphen)
-
-user@domain-.com (trailing hyphen)
-
-Example Matches:
-Valid:
-
-simple@example.com
-
-very.common@example.com
-
-disposable.style.email.with+symbol@example.com
-
-other.email-with-hyphen@example.com
-
-fully-qualified-domain@example.com
-
-user.name+tag+sorting@example.com
-
-Invalid:
-
-@missing-local.com
-
-missing-at-sign.com
-
-double..dots@example.com
-
-.leading-dot@example.com
-
-trailing-dot@example.com.
-
-user@-hyphen-start.com */
   private phoneticAlphabet: Record<string, string> = {
     'a': 'Alpha', 'b': 'Bravo', 'c': 'Charlie', 'd': 'Delta',
     'e': 'Echo', 'f': 'Foxtrot', 'g': 'Golf', 'h': 'Hotel',
@@ -111,7 +70,7 @@ user@-hyphen-start.com */
     if (!date.isValid()) {
       throw new Error('Invalid date format');
     }
-    return date.format('YYYY-MM-DDTHH:MM:SS[Z]');
+    return date.format('YYYY-MM-DDTHH:mm:ss[Z]');
   }
 
   convertToUtc(timeZone: string, timeInput: string): string {
@@ -125,11 +84,75 @@ user@-hyphen-start.com */
     }
   }
 
+  // Format the start time properly for Cal.com
+  private formatStartTime(start: string, timeZone: string): string {
+    // Make sure we have a valid date
+    if (!moment(start).isValid()) {
+      throw new Error(`Invalid start time: ${start}`);
+    }
+    
+    // If the time is not in UTC format (doesn't end with Z), convert it
+    if (!start.endsWith('Z')) {
+      return moment.tz(start, timeZone).utc().format('YYYY-MM-DDTHH:mm:ss[Z]');
+    }
+    
+    return start;
+  }
+
+  // Check if a requested time slot is available
+  private async isTimeSlotAvailable(startTime: string, timeZone: string): Promise<boolean> {
+    try {
+      // Get availability for the next 7 days
+      const availability = await this.getAvailability(7, timeZone);
+      
+      // Check if the availability response has the expected structure
+// Inside the isTimeSlotAvailable method
+if (!availability.success) {
+  console.log('Failed to fetch availability data:', 
+    'error' in availability ? availability.error : 'Unknown error');
+  return false;
+}
+      
+      if (!Array.isArray(availability.availability?.slots)) {
+        console.log('Invalid availability data structure:', availability);
+        return false;
+      }
+      
+      // Format the start time in UTC for comparison
+      const requestedTimeUtc = this.formatStartTime(startTime, timeZone);
+      const requestedTimestamp = new Date(requestedTimeUtc).getTime();
+      
+      // Check if the requested time exists in available slots
+      const isAvailable = availability.availability.slots.some(slot => {
+        const slotTime = new Date(slot.time).getTime();
+        return Math.abs(slotTime - requestedTimestamp) < 60000; // Within 1 minute
+      });
+      
+      console.log(`Time slot ${requestedTimeUtc} availability: ${isAvailable}`);
+      return isAvailable;
+    } catch (error) {
+      console.error('Error checking time slot availability:', error);
+      return false;
+    }
+  }
+
   async getAvailability(days: any, timezone: string) {
-    return await getAvailability(days);
+    return await getAvailability(days, timezone);
   }
 
   async createBooking(bookingData: BookingRequest) {
+    console.log('Creating booking with data:', JSON.stringify(bookingData, null, 2));
+    
+    // First check if the slot is actually available
+    const isAvailable = await this.isTimeSlotAvailable(
+      bookingData.start,
+      bookingData.attendee.timeZone || 'UTC'
+    );
+    
+    if (!isAvailable) {
+      throw new Error('The requested time slot is not available. Please select another time.');
+    }
+    
     // Validate phone first
     const phoneValidation = await this.validatePhone({
       phoneNumber: bookingData.attendee.phoneNumber,
@@ -149,24 +172,40 @@ user@-hyphen-start.com */
     if (!emailValidation.isValid) {
       throw new Error(`Invalid email: ${emailValidation.message}`);
     }
-
+  
+    // Format the start time properly for Cal.com API
+    const formattedStart = this.formatStartTime(
+      bookingData.start,
+      bookingData.attendee.timeZone || 'UTC'
+    );
+    
+    console.log(`Formatted booking time (UTC): ${formattedStart}`);
+  
     const calComRequest = {
-      start: bookingData.start,
+      start: formattedStart,
       eventTypeId: this.config.eventTypeId,
       attendee: {
         ...bookingData.attendee,
         email: emailValidation.normalized,
         phoneNumber: phoneValidation.normalized,
-        timeZone: bookingData.attendee.timeZone || 'America/New_York',
-        language: 'en'
       },
       location: bookingData.location || 'Zoom',
       metadata: bookingData.metadata || {}
     };
-  
-    return await createBooking(calComRequest);
+    
+    // Log the exact request we're sending to Cal.com
+    console.log('Sending booking request to Cal.com:', JSON.stringify(calComRequest, null, 2));
+    
+    // Attempt to create the booking
+    const bookingResult = await createBooking(calComRequest);
+    
+    if (!bookingResult.status) {
+      throw new Error(bookingResult.error || 'Failed to create booking');
+    }
+    
+    return bookingResult;
   }
-
+  
   async cancelBookingByUser(cancelData: any) {
     return await cancelBookingByUser(
       cancelData.attendeeName,

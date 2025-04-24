@@ -1,8 +1,9 @@
+// client/app/layout.tsx
 import type { Metadata } from 'next'
 import "@radix-ui/themes/styles.css";
 import './globals.css'
 import { Theme } from "@radix-ui/themes";
-import { ClerkProvider } from '@clerk/nextjs';
+import { AuthProvider } from './context/AuthContext';
 
 export const metadata: Metadata = {
   title: 'Surakhsa AI',
@@ -14,7 +15,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <ClerkProvider>
+    <AuthProvider>
       <html lang="en">
         <head>
           <link
@@ -24,11 +25,10 @@ export default function RootLayout({
         </head>
         <body className="font-poppins bg-background text-foreground">
           <Theme>
-            {/* Navbar handles authentication, so no buttons here */}
             {children}
           </Theme>
         </body>
       </html>
-    </ClerkProvider>
+    </AuthProvider>
   );
 }

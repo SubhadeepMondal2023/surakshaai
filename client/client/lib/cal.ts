@@ -47,7 +47,8 @@ const config: Config = {
 };
 
 export async function getAvailability(
-  days: number = 5
+  days: number = 5,
+  timezone: string = "America/New_York" // Added timezone parameter with default
 ): Promise<
   | { success: boolean; availability: { slots: any[] } }
   | { success: false; error: string }
@@ -92,6 +93,7 @@ export async function getAvailability(
       throw new Error("Invalid response format");
     }
 
+    // Return slots without timezone conversion (backend will handle this)
     const slots = Object.values(data.data.slots).flat();
 
     return {

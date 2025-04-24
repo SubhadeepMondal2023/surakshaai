@@ -27,7 +27,6 @@ model User {
 enum UserRole {
   PATIENT
   DOCTOR
-  ADMIN
 }
 
 // Patient model

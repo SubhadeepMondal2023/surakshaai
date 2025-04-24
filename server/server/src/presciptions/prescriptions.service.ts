@@ -1,6 +1,6 @@
 // server/src/prescriptions/prescriptions.service.ts
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.sercice';
+import { PrismaService } from '../../prisma/prisma.service';
 import { CreatePrescriptionDto } from './dto/create-prescription.dto';
 
 @Injectable()

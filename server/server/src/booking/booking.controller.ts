@@ -18,11 +18,10 @@ import {
   EmailValidationRequest,
   PhoneValidationRequest,
 } from 'src/request/ValidationRequest';
-
 @Controller('cal')
 export class BookingController {
   constructor(private readonly bookingService: BookingService) {}
-
+  
   @Post('/availability')
   async getAvailability(@Body() requestBody: BookingAvailabilityRequest) {
     try {
@@ -42,20 +41,43 @@ export class BookingController {
       );
     }
   }
-
+  
   @Post('/booking')
-  async createBooking(@Body() bookingData: BookingRequest) {
+  async createBooking(@Body() requestData: any) {
     try {
-      console.log('Creating booking for', bookingData);
+      // Log the raw incoming data
+      console.log('Creating booking for', requestData);
+      
+      // Transform the flat structure from the Claude tool into the expected BookingRequest format
+      const bookingData: BookingRequest = {
+        start: requestData.startTime, // Convert from startTime to start
+        eventTypeId: parseInt(process.env.CALCOM_EVENT_TYPE_ID || '0', 10), // Use env var directly
+        attendee: {
+          name: requestData.name,
+          email: requestData.email,
+          timeZone: requestData.timeZone,
+          phoneNumber: requestData.phoneNumber,
+          language: 'en'
+        },
+        location: requestData.location || 'Zoom',
+        metadata: requestData.metadata || {}
+      };
+      
+      // Log the transformed structure
+      console.log('Transformed booking request:', bookingData);
+      
       const result = await this.bookingService.createBooking(bookingData);
       return result;
     } catch (error) {
+      console.error('Booking error:', error);
       throw new HttpException(
-        'Failed to create booking',
+        error.message || 'Failed to create booking',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
+
+
 
   @Post('/cancel')
   async cancelBooking(@Body() cancelData: any) {

@@ -9,8 +9,6 @@ import {
 import { JoinUrlResponse, CallConfig } from "@/lib/types";
 import { updateOrderTool } from "./clientTools";
 import { getAvailability } from "./cal";
-
-// Extend the UltravoxSession type with the missing method
 interface ExtendedUltravoxSession extends UltravoxSession {
   injectUserText(text: string): Promise<void>;
 }

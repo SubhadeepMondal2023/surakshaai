@@ -1,9 +1,14 @@
+// client/app/components/Navbar.tsx
+'use client';
+
 import React, { useState } from 'react';
 import { Heart, Menu, X } from 'lucide-react';
-import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
+import { useAuth } from '../app/context/AuthContext';
+import Link from 'next/link';
 
 const Navbar = ({ className }: { className?: string }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, logout, isAuthenticated } = useAuth();
   
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-black py-4 shadow-md">
@@ -24,24 +29,35 @@ const Navbar = ({ className }: { className?: string }) => {
           <a href="#about" className="text-white hover:text-violet-400">About Us</a>
           <a href="#faq" className="text-white hover:text-violet-400">FAQ</a>
         </nav>
-
+        
         {/* Authentication Buttons */}
         <div className="hidden md:flex items-center space-x-4">
-          <SignedOut>
-            <SignInButton mode="modal">
-              <button className="px-4 py-2 bg-violet-600 text-white rounded-md">
-                Sign In
+          {!isAuthenticated ? (
+            <>
+              <Link href="/login">
+                <button className="px-4 py-2 bg-violet-600 text-white rounded-md">
+                  Sign In
+                </button>
+              </Link>
+              <Link href="/register">
+                <button className="px-4 py-2 border border-violet-600 text-violet-600 bg-white rounded-md">
+                  Sign Up
+                </button>
+              </Link>
+            </>
+          ) : (
+            <>
+              <span className="text-white">
+                Hi, {user?.profile?.firstName || user?.email}
+              </span>
+              <button 
+                onClick={logout}
+                className="px-4 py-2 bg-violet-600 text-white rounded-md"
+              >
+                Logout
               </button>
-            </SignInButton>
-            <SignUpButton mode="modal">
-              <button className="px-4 py-2 border border-violet-600 text-violet-600 bg-white rounded-md">
-                Sign Up
-              </button>
-            </SignUpButton>
-          </SignedOut>
-          <SignedIn>
-            <UserButton />
-          </SignedIn>
+            </>
+          )}
         </div>
         
         {/* Mobile menu button */}
@@ -63,11 +79,28 @@ const Navbar = ({ className }: { className?: string }) => {
             <a href="#testimonials" className="px-4 py-2 text-white" onClick={() => setIsMenuOpen(false)}>Testimonials</a>
             <a href="#about" className="px-4 py-2 text-white" onClick={() => setIsMenuOpen(false)}>About Us</a>
             <a href="#faq" className="px-4 py-2 text-white" onClick={() => setIsMenuOpen(false)}>FAQ</a>
-            <SignUpButton mode="modal">
-              <button className="px-4 py-2 border border-violet-600 text-violet-600 bg-white rounded-md w-full">
-                Sign Up
+            
+            {!isAuthenticated ? (
+              <>
+                <Link href="/login" className="w-full">
+                  <button className="px-4 py-2 bg-violet-600 text-white rounded-md w-full">
+                    Sign In
+                  </button>
+                </Link>
+                <Link href="/register" className="w-full">
+                  <button className="px-4 py-2 border border-violet-600 text-violet-600 bg-white rounded-md w-full">
+                    Sign Up
+                  </button>
+                </Link>
+              </>
+            ) : (
+              <button 
+                onClick={logout}
+                className="px-4 py-2 bg-violet-600 text-white rounded-md w-full"
+              >
+                Logout
               </button>
-            </SignUpButton>
+            )}
           </nav>
         </div>
       )}
