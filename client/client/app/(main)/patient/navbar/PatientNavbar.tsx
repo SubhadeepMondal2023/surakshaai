@@ -13,7 +13,9 @@ import {
   CalendarDays,
   Menu,
   X,
-  LifeBuoy
+  LifeBuoy,
+  Users,
+  ScanLine
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -104,7 +106,7 @@ const PatientSidebar = ({ isSidebarOpen, toggleSidebar }: PatientSidebarProps) =
         {/* Navigation Links */}
         <nav className="flex-1 overflow-y-auto p-4 space-y-1">
           <SidebarLink 
-            href="/dashboard" 
+            href="/patient" 
             icon={<LayoutDashboard size={20} />} 
             label="Dashboard" 
           />
@@ -114,7 +116,18 @@ const PatientSidebar = ({ isSidebarOpen, toggleSidebar }: PatientSidebarProps) =
             label="Book Appointment" 
           />
           <SidebarLink 
-            href="/patient/chat-doctor"  // Updated to match your route structure
+            href="/doctors" 
+            icon={<Users size={20} />} 
+            label="Our Doctors" 
+          />
+           <SidebarLink 
+            href="/appointments" 
+            icon={<CalendarDays size={20} />} 
+            label="My Appointments" 
+          />
+          
+          <SidebarLink 
+            href="/patient/chat-doctor"  
             icon={<MessageCircle size={20} />} 
             label="Chat with AI Doctor" 
           />
@@ -128,10 +141,10 @@ const PatientSidebar = ({ isSidebarOpen, toggleSidebar }: PatientSidebarProps) =
             icon={<Pill size={20} />} 
             label="Prescriptions" 
           />
-          <SidebarLink 
-            href="/appointments" 
-            icon={<CalendarDays size={20} />} 
-            label="My Appointments" 
+         <SidebarLink 
+            href="/patient/scans" 
+            icon={<ScanLine size={20} />} 
+            label="Scans" 
           />
         </nav>
         

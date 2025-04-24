@@ -51,7 +51,6 @@ model Patient {
   chatSessions    ChatSession[]
 }
 
-// Doctor model
 model Doctor {
   id              String          @id @default(cuid())
   userId          String          @unique
@@ -64,8 +63,6 @@ model Doctor {
   biography       String?
   education       String?
   availableSlots  AvailableSlot[]
-  rating          Float?          @default(0)
-  reviewCount     Int?            @default(0)
   
   // Relations
   appointments    Appointment[]

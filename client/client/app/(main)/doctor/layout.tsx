@@ -26,7 +26,7 @@ export default function DoctorLayout({
       <div className={`bg-white border-r ${sidebarOpen ? 'w-64' : 'w-20'} transition-all duration-300 fixed h-full`}>
         <div className="p-4 flex items-center justify-between border-b">
           {sidebarOpen ? (
-            <h1 className="text-xl font-bold text-primary">MediDash</h1>
+            <h1 className="text-xl font-bold text-primary">SurakshaAi</h1>
           ) : (
             <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
               <span className="text-white font-bold">M</span>
