@@ -1,7 +1,7 @@
 import { DemoConfig, ParameterLocation, SelectedTool } from "@/lib/types";
 import "dotenv/config";
 
-const toolsBaseUrl = "https://e639-2409-40e0-101a-17cb-b491-bd09-1844-8533.ngrok-free.app";
+const toolsBaseUrl = "https://400c-2409-40e0-1019-9791-b43b-e3c8-4cac-c0fa.ngrok-free.app";
 
 const SYSTEM_PROMPT = `
 You are Monika, Healthcare AI Receptionist

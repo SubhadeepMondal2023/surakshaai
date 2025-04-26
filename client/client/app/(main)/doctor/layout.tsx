@@ -1,8 +1,10 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Calendar, ClipboardList, FileText, User, Settings, LogOut } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '@/app/context/AuthContext';
 
 export default function DoctorLayout({
   children,
@@ -10,8 +12,20 @@ export default function DoctorLayout({
   children: React.ReactNode
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { user, loading, logout } = useAuth();
+    const router = useRouter();
   const pathname = usePathname();
-
+ useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+  
+  const handleLogout = () => {
+    logout();
+    // The router.push('/') is already in the logout function in AuthContext
+  };
+  
   const navItems = [
     { name: 'Appointments', icon: Calendar, href: '/doctor/appointments' },
     { name: 'Prescriptions', icon: ClipboardList, href: '/doctor/prescriptions' },
@@ -56,7 +70,10 @@ export default function DoctorLayout({
         <div className="absolute bottom-0 w-full p-4 border-t">
           <button className="flex items-center p-3 rounded-lg hover:bg-gray-100 w-full">
             <LogOut className="h-5 w-5" />
-            {sidebarOpen && <span className="ml-3">Logout</span>}
+            {sidebarOpen && <span 
+            className="ml-3"
+            onClick={handleLogout}
+            >Logout</span>}
           </button>
         </div>
       </div>

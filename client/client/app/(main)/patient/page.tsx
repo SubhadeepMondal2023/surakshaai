@@ -1,4 +1,3 @@
-// client/app/patient/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -9,7 +8,7 @@ import RecentPrescriptions from './_components/RecentPrescriptions';
 import QuickActions from './_components/QuickActions';
 
 export default function PatientDashboard() {
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
   const router = useRouter();
   const [greeting, setGreeting] = useState('');
   
@@ -22,9 +21,14 @@ export default function PatientDashboard() {
   
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/sign-in');
+      router.push('/login');
     }
   }, [user, loading, router]);
+  
+  const handleLogout = () => {
+    logout();
+    // The router.push('/') is already in the logout function in AuthContext
+  };
   
   if (loading) {
     return (
@@ -45,17 +49,27 @@ export default function PatientDashboard() {
   return (
     <>
       <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <div className="flex gap-4 items-center">
-          <div className="h-16 w-16 rounded-full bg-gradient-to-br from-purple-600 to-purple-800 flex items-center justify-center text-white font-bold text-xl">
-            {user?.profile?.firstName?.charAt(0) || ''}
-            {user?.profile?.lastName?.charAt(0) || ''}
+        <div className="flex justify-between items-center">
+          <div className="flex gap-4 items-center">
+            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-purple-600 to-purple-800 flex items-center justify-center text-white font-bold text-xl">
+              {user?.profile?.firstName?.charAt(0) || ''}
+              {user?.profile?.lastName?.charAt(0) || ''}
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {greeting}, {user?.profile?.firstName || 'Patient'}!
+              </h1>
+              <p className="text-gray-600">Welcome to your patient dashboard</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              {greeting}, {user?.profile?.firstName || 'Patient'}!
-            </h1>
-            <p className="text-gray-600">Welcome to your patient dashboard</p>
-          </div>
+          
+          {/* Logout Button */}
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md font-medium transition duration-200"
+          >
+            Logout
+          </button>
         </div>
       </div>
       
